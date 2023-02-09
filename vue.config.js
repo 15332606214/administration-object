@@ -44,6 +44,12 @@ module.exports = {
         pathRewrite:{
           '^/dev-api':''
         }
+      },
+      '/admin/product':{
+        target:'http://39.98.123.211:8510',
+        pathRewrite:{
+          '^/dev-api':''
+        }
       }
     }
   },

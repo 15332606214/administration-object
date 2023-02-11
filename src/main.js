@@ -16,7 +16,11 @@ import '@/icons' // icon
 import '@/permission' // permission control
 
 import * as API from "@/api";
-
+// 全局组件注册
+import CategorySelector from "@/components/CategorySelector";
+Vue.component('CategorySelector',CategorySelector)
+import HintButton from "@/components/HintButton";
+Vue.component('HintButton',HintButton)
 
 if (process.env.NODE_ENV === 'production') {
   const { mockXHR } = require('../mock')

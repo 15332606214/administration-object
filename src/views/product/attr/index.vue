@@ -2,7 +2,7 @@
   <div>
     <!-- 第一个card是三级联动 -->
     <el-card>
-      <CategorySelector @changeCategory="changeCategory"></CategorySelector>
+      <CategorySelector @changeCategory="changeCategory" :isShowList="isShowList"></CategorySelector>
     </el-card>
     <!-- 第二个card是属性列表相关/添加或修改页 -->
     <el-card style="margin-top: 20px;">
@@ -24,9 +24,25 @@
           </el-table-column>
           <el-table-column prop="address" label="操作" width="150px">
             <template slot-scope="{row}">
-              <HintButton type="warning" icon="el-icon-edit" size="mini" title="修改" @click="showUpdateDiv(row)">
+              <HintButton 
+              type="warning" 
+              icon="el-icon-edit" 
+              size="mini" 
+              title="修改" 
+              @click="showUpdateDiv(row)">
               </HintButton>
-              <HintButton type="danger" icon="el-icon-edit" size="mini" title="删除"></HintButton>
+              <el-popconfirm 
+              :title="`确定删除${row.attrName}吗？`"
+              @onConfirm="deleteAttr(row)">
+                <HintButton
+                slot="reference" 
+                type="danger" 
+                icon="el-icon-edit" 
+                size="mini" 
+                title="删除"
+                ></HintButton>
+              </el-popconfirm>
+              
             </template>
           </el-table-column>
         </el-table>
@@ -71,7 +87,7 @@
           </el-table-column>
         </el-table>
 
-        <el-button type="primary">保存</el-button>
+        <el-button type="primary" @click="save" :disabled="attrForm.attrValueList.length === 0">保存</el-button>
         <el-button @click="isShowList = true">取消</el-button>
       </div>
     </el-card>
@@ -202,6 +218,43 @@ export default {
         // 页面更新完成后去input获取焦点
         this.$refs[index].focus()
       })
+    },
+
+    // 点击保存
+    async save(){
+      // 获取收集的参数
+      let attr = this.attrForm
+      // 整理参数 1属性为空串去掉 2去掉不需要的属性值，如isEdit 3属性当中属性值列表为空，不发请求
+      attr.attrValueList = attr.attrValueList.filter(item => {
+        if(item.valueName !== ''){
+          delete item.isEdit
+          return true
+        }
+      })
+
+      if(attr.attrValueList.length === 0) return
+      // 发请求
+      try {
+        console.log(attr);
+        await this.$API.attr.addOrUpdate(attr)
+        this.$message.success('保存成功')
+        this.isShowList = true // 返回列表页
+        this.getAttrList()
+      } catch (error) {
+        this.$message.error('添加或修改属性失败')
+      }
+      
+    },
+
+    // 删除属性
+    async deleteAttr(row){
+      try {
+        await this.$API.attr.delete(row.id)
+        this.$message.success('删除成功')
+        this.getAttrList() 
+      } catch (error) {
+        this.$message.error('删除失败')
+      }
     }
   },
 

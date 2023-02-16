@@ -16,8 +16,8 @@
       </el-form-item>
 
       <el-form-item label="SPU图片">
-        <el-upload action="https://jsonplaceholder.typicode.com/posts/" list-type="picture-card"
-          :file-list="spuImageList" :on-preview="handlePictureCardPreview" :on-remove="handleRemove">
+        <el-upload action="/dev-api/admin/product/fileUpload" list-type="picture-card" :file-list="spuImageList"
+          :on-preview="handlePictureCardPreview" :on-remove="handleRemove" :on-success="handleSuccess">
           <i class="el-icon-plus"></i>
         </el-upload>
         <el-dialog :visible.sync="dialogVisible">
@@ -26,18 +26,62 @@
       </el-form-item>
 
       <el-form-item label="销售属性">
-        <el-select v-model="spuSaleAttrId" placeholder="还有四项未选择">
-          <el-option label="label" value="value"></el-option>
+        <el-select v-model="spuSaleAttrIdName"
+          :placeholder="unUsedSpuSaleAttrList.length > 0 ? `还有${unUsedSpuSaleAttrList.length}项未选择` : '没有了！！！'">
+          <el-option :label="unUsedSpuSaleAttr.name" 
+          :value="`${unUsedSpuSaleAttr.id}:${unUsedSpuSaleAttr.name}`"
+          v-for="unUsedSpuSaleAttr in unUsedSpuSaleAttrList" 
+          :key="unUsedSpuSaleAttr.id"></el-option>
         </el-select>
-        <el-button type="primary" icon="el-icon-pro">添加销售属性</el-button>
-        <el-table border style="width: 100%;margin:10px 0">
-          <el-table-column type="index" label="序号" width="80px" align="center">
+        <el-button type="primary" 
+        icon="el-icon-pro" 
+        @click="addSaleAttr"
+        :disabled="!spuSaleAttrIdName">
+        添加销售属性</el-button>
+        <el-table border 
+        :data="spuForm.spuSaleAttrList" 
+        style="width: 100%;margin:10px 0">
+          <el-table-column 
+          type="index" 
+          label="序号" 
+          width="80px" 
+          align="center">
           </el-table-column>
-          <el-table-column prop="prop" label="属性名" width="150px">
+          <el-table-column prop="saleAttrName" label="属性名" width="150px">
           </el-table-column>
           <el-table-column prop="prop" label="属性值名称列表" width="width">
+            <template slot-scope="{row}">
+              <el-tag 
+              v-for="spuSaleAttrValue,index in row.spuSaleAttrValueList" 
+              :key="spuSaleAttrValue.id" closable
+              :disable-transitions="false"
+              @close="row.spuSaleAttrValueList.splice(index,1)">
+                {{ spuSaleAttrValue.saleAttrValueName }}
+              </el-tag>
+              <el-input 
+              class="input-new-tag" 
+              v-if="row.inputVisible" 
+              v-model="row.inputValue" 
+              ref="saveTagInput"
+              size="small" 
+              placeholder="名称" 
+              @blur="handleInputConfirm(row)"
+              @keyup.enter.native="handleInputConfirm(row)">
+              </el-input>
+              <el-button v-else class="button-new-tag" size="small" @click="showInput(row)">
+                + 添加</el-button>
+            </template>
           </el-table-column>
           <el-table-column prop="prop" label="操作" width="150px">
+            <template slot-scope="{$index}">
+              <HintButton 
+              type="danger" 
+              icon="el-icon-delete" 
+              size="mini"
+              title="删除"
+              @click="spuForm.spuSaleAttrList.splice($index,1)"
+              ></HintButton>
+            </template>
           </el-table-column>
         </el-table>
         <el-button type="primary">保存</el-button>
@@ -69,17 +113,30 @@ export default {
       trademarkList: [],  //获取所有品牌列表存入
       baseSaleAttrList: [],//获取所有的spu销售属性存入
 
-      spuSaleAttrId: '', //select之后收集销售Id
+      spuSaleAttrIdName: '', //select之后收集销售Id和Name
       // 上传照片墙
       dialogImageUrl: '',
-      dialogVisible: false
+      dialogVisible: false,
+      // lalala
+      dynamicTags: ['标签一', '标签二', '标签三'],
+      inputVisible: false,
+      inputValue: ''
     }
   },
   methods: {
     // 上传照片墙
+    // 删除图片成功后的回调
     handleRemove(file, fileList) {
       console.log(file, fileList);
+      // 删除成功把剩余的图片列表收集
+      this.spuImageList = fileList
     },
+    // 新上传图片后的回调
+    handleSuccess(response, file, fileList) {
+      console.log(response, file, fileList);
+      this.spuImageList = fileList
+    },
+    // 预览大图
     handlePictureCardPreview(file) {
       this.dialogImageUrl = file.url;
       this.dialogVisible = true;
@@ -126,11 +183,87 @@ export default {
       if (baseSaleAttrResult.code === 200) {
         this.baseSaleAttrList = baseSaleAttrResult.data
       }
+    },
+    // 点击添加销售属性
+    addSaleAttr(){
+      let[baseSaleAttrId,saleAttrName]=this.spuSaleAttrIdName.split(':')
+      let obj = {
+        baseSaleAttrId,
+        saleAttrName,
+        spuSaleAttrValueList:[]
+      }
+      this.spuForm.spuSaleAttrList.push(obj)
+      // 把原来收集的数据清空
+      this.spuSaleAttrIdName=''
+    },
+
+    // 点击+添加按钮变成input
+    showInput(row) {
+      this.$set(row,'inputVisible',true)
+      // 自动聚焦
+      this.$nextTick(_ => {
+        this.$refs.saveTagInput.$refs.input.focus();
+      });
+    },
+    // input失去焦点或点击回车
+    handleInputConfirm(row) {
+      // 从当前属性对象身上，把刚才input输入的数据获取到
+      let saleAttrValueName = row.inputValue;
+      // 判断值是否为空
+      if (saleAttrValueName.trim() === '') {
+        row.inputValue = ''
+        return
+      }
+      // 判断这个值是否和已存在属性值重复
+      let isRepeat = row.spuSaleAttrValueList.some(item => item.saleAttrValueName===saleAttrValueName)
+      if(isRepeat){
+        this.$message.info('输入的属性值名称不能重复')
+        row.inputValue = ''
+        return
+      }
+      // 把数据变为想要的结构
+      let obj={
+        saleAttrValueName
+      }
+      // 把结构数据添加到对应的属性值列表中
+      row.spuSaleAttrValueList.push(obj)
+      // 清空原来input内输入的数据
+      row.inputValue = '';
+      // 变为按钮
+      row.inputVisible = false;
+    }
+  },
+  computed: {
+    // 所有销售属性除去自生，剩余的销售属性列表
+    unUsedSpuSaleAttrList() {
+      // 从所有的销售属性列表当中去过滤，过滤出销售属性名称和自己销售列表中销售属性名称不能相同
+      return this.baseSaleAttrList.filter(baseSaleAttr => {
+        // 从baseSaleAttrList拿一项，去和自己已有数组每个项对比，如都不相等就拿走，相等就不要
+        return this.spuForm.spuSaleAttrList.every(spuSaleAttr => {
+          return baseSaleAttr.name !== spuSaleAttr.saleAttrName
+        })
+      })
     }
   }
 }
 </script>
 
 <style>
+.el-tag+.el-tag {
+  margin-left: 10px;
+}
 
+.button-new-tag {
+  margin-left: 10px;
+  height: 32px;
+  line-height: 30px;
+  padding-top: 0;
+  padding-bottom: 0;
+}
+
+.input-new-tag {
+  width: 90px;
+  margin-left: 10px;
+  vertical-align: bottom;
+}
 </style>

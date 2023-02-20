@@ -28,7 +28,7 @@
         </el-pagination>
       </div>
       <!-- 添加和修改SPU的页面组件 -->
-      <SpuForm v-show="isShowSpuForm" ref="spu" :visible.sync="isShowSpuForm"></SpuForm>
+      <SpuForm v-show="isShowSpuForm" ref="spu" :visible.sync="isShowSpuForm" @successBack="successBack"></SpuForm>
       <!-- 添加SKU的页面组件 -->
       <SkuForm v-show="isShowSkuForm"></SkuForm>
     </el-card>
@@ -94,10 +94,11 @@ export default {
     showAddSpuForm(){
       this.isShowSpuForm = true
       
-      this.$refs.spu.initAddSpuFormData()
+      this.$refs.spu.initAddSpuFormData(this.category3Id)
     },
     // 点击修改SPU按钮
     showUpdateSpuForm(row){
+      this.flag=row.id
       this.isShowSpuForm = true
       // 拿到子组件对象，可以使用组件当中的数据也可以调用子组件当中的方法
       this.$refs.spu.initUpdateSpuFormData(row)
@@ -105,6 +106,18 @@ export default {
     // 点击添加SKU列表
     showAddSkuForm(row){
       this.isShowSkuForm = true
+    },
+
+    // 成功返回后父组件做的事
+    successBack(){
+     if(this.flag){
+      // 修改回来的
+      this.getSpuList(this.page)
+     } else {
+      // 添加回来的
+      this.getSpuList()
+     }
+     this.flag = null
     }
   }
 }
